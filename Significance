@@ -1,0 +1,28 @@
+import pandas as pd
+from sklearn.linear_model import LinearRegression
+import matplotlib.pyplot as plt
+import seaborn as sns
+import statsmodels.api as sm
+from statsmodels.formula.api import ols
+
+df = pd.read_csv('stress_factor.csv')
+keep_cols = [
+    'Kindly Rate your Sleep Quality 😴',
+    'how would you rate your study load?',
+    'How would you rate your stress levels?'
+]
+df_sig = df[keep_cols].copy()
+df_sig = df_sig.rename(columns={
+    'Kindly Rate your Sleep Quality 😴': 'sleep_quality',
+    'how would you rate your study load?': 'study_load',
+    'How would you rate your stress levels?': 'stress_levels'
+})
+df_sig.to_csv('stress_significant.csv', index=False)
+df_sig['sleep_quality'] = df_sig['sleep_quality'].astype('category')
+df_sig['study_load'] = df_sig['study_load'].astype('category')
+formula = 'stress_levels ~ C(sleep_quality) + C(study_load) + C(sleep_quality):C(study_load)'
+model = ols(formula, data=df_sig).fit()
+anova_table = sm.stats.anova_lm(model, typ=2)
+print(anova_table)
+print('\nR² =', model.rsquared)
+print('\n95 % Confidence Intervals:\n', model.conf_int())

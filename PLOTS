@@ -1,0 +1,62 @@
+import pandas as pd
+import statsmodels.api as sm
+from statsmodels.formula.api import ols
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+df = pd.read_csv('stress_factor.csv')
+keep_cols = [
+    'Kindly Rate your Sleep Quality 😴',
+    'how would you rate your study load?',
+    'How would you rate your stress levels?'
+]
+df_sig = df[keep_cols].copy()
+df_sig = df_sig.rename(columns={
+    'Kindly Rate your Sleep Quality 😴': 'sleep_quality',
+    'how would you rate your study load?': 'study_load',
+    'How would you rate your stress levels?': 'stress_levels'
+})
+df_sig.to_csv('stress_significant.csv', index=False)
+
+df_sig['sleep_quality'] = df_sig['sleep_quality'].astype('category')
+df_sig['study_load'] = df_sig['study_load'].astype('category')
+
+formula = 'stress_levels ~ C(sleep_quality) + C(study_load) + C(sleep_quality):C(study_load)'
+model = ols(formula, data=df_sig).fit()
+
+anova_table = sm.stats.anova_lm(model, typ=2)
+print(anova_table)
+
+print('\nR² =', model.rsquared)
+print('\n95 % CI:\n', model.conf_int())
+
+# ---------- Model diagnostics ----------
+resid = model.resid
+fitted = model.fittedvalues
+
+fig, axes = plt.subplots(2, 2, figsize=(10, 8))
+
+# Residuals vs fitted
+axes[0, 0].scatter(fitted, resid, alpha=0.6)
+axes[0, 0].axhline(0, color='red', linestyle='--')
+axes[0, 0].set_title('Residuals vs Fitted')
+axes[0, 0].set_xlabel('Fitted values')
+axes[0, 0].set_ylabel('Residuals')
+
+# Q‑Q plot
+sm.qqplot(resid, line='s', ax=axes[0, 1])
+axes[0, 1].set_title('Q‑Q Plot')
+
+# Histogram of residuals
+sns.histplot(resid, kde=True, ax=axes[1, 0])
+axes[1, 0].set_title('Residual Distribution')
+axes[1, 0].set_xlabel('Residuals')
+
+# Leverage (optional)
+# from statsmodels.graphics.regressionplots import plot_leverage_resid2
+# plot_leverage_resid2(model, ax=axes[1, 1])
+# axes[1, 1].set_title('Leverage vs Residuals')
+
+plt.tight_layout()
+plt.show()
+
